@@ -1,0 +1,9 @@
+{
+  "embedding_dim": 100,
+  "hidden_dim": 64,
+  "num_layers": 2,
+  "max_length": 128,
+  "epochs_trained": 12,
+  "best_val_macro_f1": 0.27777777777777773,
+  "best_val_accuracy": 0.3333333333333333
+}
