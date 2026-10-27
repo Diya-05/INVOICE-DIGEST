@@ -1,0 +1,40 @@
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Model checkpoints & cache
+huggingface/
+.cache/
+models/lstm_checkpoint/*.pt
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# Local databases & state
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+invoice_digest.db*
+
+# Secrets & Local Configurations
+.env*
+.streamlit/secrets.toml
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
