@@ -1,523 +1,734 @@
 """
-Editorial Design System and Theme Utilities for Invoice Digest
-Implements a minimal, premium editorial/newspaper-inspired visual identity:
-- Primary Background: #FDFBF7 (warm cream)
-- Primary Text: #1A1A1A (ink black)
-- Primary Accent: #1E40AF (deep royal blue)
-- Secondary Accent: #0F766E (professional teal)
-- Borders/Dividers: #E5E1D8
-- Muted Text: #66635E
-- Elevated Surface: #FFFFFF
+UI/UX Design System and Reusable Theme Components for Invoice Digest
+Modern B2B SaaS Financial Email Intelligence Visual Identity:
+- Primary Ink Navy: #172B3A
+- Main App Background: #F6F5F0
+- Card/Surface Background: #FFFFFF
+- Intelligence Green (Positive / Settled): #18866B
+- Muted Amber (Neutral / Operational / Pending): #DDA348
+- Soft Coral (Negative / Review Recommended): #D96C63
+- Primary Text: #202B35
+- Secondary Text: #74808B
+- Subtle Borders: #E4E7E5
 """
 
 from datetime import datetime
 import streamlit as st
+from src.database import get_dashboard_kpis
 
-EDITORIAL_CSS = """
+
+SAAS_CSS = """
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-    /* Global Root Variables */
     :root {
-        --bg-primary: #FDFBF7;
-        --bg-secondary: #F4EFE6;
-        --text-primary: #1A1A1A;
-        --text-muted: #66635E;
-        --accent-primary: #1E40AF;
-        --accent-secondary: #0F766E;
-        --border-color: #E5E1D8;
-        --surface-white: #FFFFFF;
-        --font-serif: 'Playfair Display', 'Libre Baskerville', Georgia, serif;
+        --color-ink-navy: #172B3A;
+        --color-app-bg: #F6F5F0;
+        --color-surface: #FFFFFF;
+        --color-surface-hover: #FBFBF9;
+        --color-intelligence-green: #18866B;
+        --color-intelligence-green-bg: #E8F5F1;
+        --color-intelligence-green-border: #A3D9C9;
+        --color-muted-amber: #DDA348;
+        --color-muted-amber-dark: #9A6B1F;
+        --color-muted-amber-bg: #FBF4E8;
+        --color-muted-amber-border: #F3DCB3;
+        --color-soft-coral: #D96C63;
+        --color-soft-coral-dark: #9C3831;
+        --color-soft-coral-bg: #FDF0EF;
+        --color-soft-coral-border: #F5C5C0;
+        --color-text-primary: #202B35;
+        --color-text-secondary: #74808B;
+        --color-border: #E4E7E5;
+        --border-radius-sm: 6px;
+        --border-radius-md: 10px;
+        --border-radius-lg: 14px;
+        --shadow-card: 0 1px 3px rgba(23, 43, 58, 0.05), 0 1px 2px rgba(23, 43, 58, 0.03);
+        --shadow-elevated: 0 4px 14px rgba(23, 43, 58, 0.06), 0 1px 3px rgba(23, 43, 58, 0.03);
         --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
     }
 
-    /* Main App Container */
+    /* Main Application Body */
     .stApp {
-        background-color: var(--bg-primary) !important;
-        color: var(--text-primary) !important;
+        background-color: var(--color-app-bg) !important;
+        color: var(--color-text-primary) !important;
         font-family: var(--font-sans) !important;
         -webkit-font-smoothing: antialiased;
     }
 
-    /* Override Streamlit Top Header */
+    /* Top Streamlit Header */
     header[data-testid="stHeader"] {
-        background-color: var(--bg-primary) !important;
-        border-bottom: 1px solid var(--border-color) !important;
+        background-color: var(--color-app-bg) !important;
+        border-bottom: 1px solid var(--color-border) !important;
     }
 
-    /* Sidebar Styling (Clean Editorial Masthead Style, NOT Dark Mode) */
+    /* Sidebar Shell */
     [data-testid="stSidebar"] {
-        background-color: var(--bg-secondary) !important;
-        border-right: 1px solid var(--border-color) !important;
+        background-color: #FAF9F5 !important;
+        border-right: 1px solid var(--color-border) !important;
     }
     [data-testid="stSidebar"] * {
-        color: var(--text-primary) !important;
-    }
-    [data-testid="stSidebar"] .stMarkdown p {
-        color: var(--text-muted) !important;
-        font-size: 0.9rem !important;
-        line-height: 1.5 !important;
-    }
-    [data-testid="stSidebar"] h1, 
-    [data-testid="stSidebar"] h2, 
-    [data-testid="stSidebar"] h3 {
-        font-family: var(--font-serif) !important;
-        color: var(--text-primary) !important;
-        letter-spacing: -0.01em !important;
+        color: var(--color-text-primary);
+        font-family: var(--font-sans) !important;
     }
     [data-testid="stSidebarNav"] a {
-        border-radius: 4px !important;
+        border-radius: var(--border-radius-sm) !important;
+        padding: 0.45rem 0.75rem !important;
+        margin: 2px 0 !important;
+        font-size: 0.88rem !important;
+        font-weight: 500 !important;
+        color: var(--color-text-primary) !important;
         transition: all 0.15s ease-in-out !important;
-        color: var(--text-primary) !important;
     }
     [data-testid="stSidebarNav"] a:hover {
-        background-color: var(--border-color) !important;
-        color: var(--accent-primary) !important;
+        background-color: #EFECE6 !important;
+        color: var(--color-ink-navy) !important;
     }
     [data-testid="stSidebarNav"] a[aria-current="page"] {
-        background-color: var(--border-color) !important;
-        color: var(--accent-primary) !important;
+        background-color: #FFFFFF !important;
+        color: var(--color-ink-navy) !important;
         font-weight: 600 !important;
-        border-left: 3px solid var(--accent-primary) !important;
+        box-shadow: 0 1px 3px rgba(23, 43, 58, 0.06) !important;
+        border-left: 3px solid var(--color-ink-navy) !important;
     }
 
     /* Typography Hierarchy */
     h1, .stTitle {
-        font-family: var(--font-serif) !important;
-        color: var(--text-primary) !important;
+        font-family: var(--font-sans) !important;
+        color: var(--color-ink-navy) !important;
         font-weight: 700 !important;
+        font-size: 1.65rem !important;
         letter-spacing: -0.02em !important;
-        line-height: 1.15 !important;
+        line-height: 1.25 !important;
+        margin-bottom: 0.25rem !important;
     }
-    h2, h3 {
-        font-family: var(--font-serif) !important;
-        color: var(--text-primary) !important;
+    h2 {
+        font-family: var(--font-sans) !important;
+        color: var(--color-ink-navy) !important;
         font-weight: 600 !important;
+        font-size: 1.35rem !important;
         letter-spacing: -0.01em !important;
+    }
+    h3 {
+        font-family: var(--font-sans) !important;
+        color: var(--color-ink-navy) !important;
+        font-weight: 600 !important;
+        font-size: 1.15rem !important;
     }
     h4, h5, h6 {
         font-family: var(--font-sans) !important;
-        color: var(--text-primary) !important;
+        color: var(--color-text-secondary) !important;
         font-weight: 600 !important;
+        font-size: 0.8rem !important;
         text-transform: uppercase !important;
         letter-spacing: 0.05em !important;
-        font-size: 0.85rem !important;
     }
     p, span, label {
-        color: var(--text-primary);
+        color: var(--color-text-primary);
         font-family: var(--font-sans);
-        line-height: 1.6;
+        line-height: 1.55;
     }
     .stCaption, caption {
-        color: var(--text-muted) !important;
-        font-family: var(--font-sans) !important;
-        font-size: 0.875rem !important;
+        color: var(--color-text-secondary) !important;
+        font-size: 0.82rem !important;
     }
 
-    /* Editorial Masthead Component */
-    .editorial-masthead {
-        border-bottom: 3px double var(--text-primary);
-        padding-bottom: 1.25rem;
-        margin-bottom: 2rem;
-        background: transparent;
+    /* SaaS Header Block */
+    .saas-header {
+        background-color: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--border-radius-lg);
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1.25rem;
+        box-shadow: var(--shadow-card);
     }
-    .editorial-meta-bar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-top: 1px solid var(--text-primary);
-        border-bottom: 1px solid var(--border-color);
-        padding: 0.35rem 0;
-        margin-bottom: 1rem;
-        font-family: var(--font-sans);
-        font-size: 0.75rem;
+    .saas-kicker {
+        font-size: 0.72rem;
         font-weight: 600;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: var(--text-muted);
+        color: var(--color-intelligence-green);
+        margin-bottom: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
     }
-    .editorial-title {
-        font-family: var(--font-serif);
-        font-size: 2.75rem;
+    .saas-title {
+        font-size: 1.5rem;
         font-weight: 700;
-        color: var(--text-primary);
-        line-height: 1.1;
-        letter-spacing: -0.03em;
-        margin: 0.25rem 0;
+        color: var(--color-ink-navy);
+        letter-spacing: -0.02em;
+        margin: 0;
     }
-    .editorial-subtitle {
-        font-family: 'Libre Baskerville', Georgia, serif;
-        font-style: italic;
-        font-size: 1.05rem;
-        color: var(--text-muted);
+    .saas-subtitle {
+        font-size: 0.92rem;
+        color: var(--color-text-secondary);
+        margin-top: 0.35rem;
         line-height: 1.5;
-        margin-top: 0.5rem;
     }
 
-    /* Editorial Section Rule */
-    .editorial-divider {
-        border: none;
-        border-top: 1px solid var(--border-color);
-        margin: 1.75rem 0;
-    }
-    .editorial-divider-heavy {
-        border: none;
-        border-top: 2px solid var(--text-primary);
-        margin: 2rem 0;
-    }
-
-    /* Minimal Editorial Cards */
-    .editorial-card {
-        background-color: var(--bg-primary);
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        padding: 1.25rem;
-        margin-bottom: 1rem;
-    }
-    .editorial-card-elevated {
-        background-color: var(--surface-white);
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        padding: 1.25rem;
-        box-shadow: 0 1px 3px rgba(26, 26, 26, 0.03);
-    }
-
-    /* Streamlit Metrics (Editorial Styling) */
+    /* Metric Cards */
     [data-testid="stMetric"] {
-        background-color: var(--bg-primary) !important;
-        border: 1px solid var(--border-color) !important;
-        border-radius: 4px !important;
-        padding: 0.85rem 1rem !important;
+        background-color: var(--color-surface) !important;
+        border: 1px solid var(--color-border) !important;
+        border-radius: var(--border-radius-md) !important;
+        padding: 1rem 1.15rem !important;
+        box-shadow: var(--shadow-card) !important;
+        transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+    }
+    [data-testid="stMetric"]:hover {
+        box-shadow: var(--shadow-elevated) !important;
     }
     [data-testid="stMetricLabel"] {
-        font-family: var(--font-sans) !important;
-        font-size: 0.75rem !important;
+        font-size: 0.74rem !important;
         font-weight: 600 !important;
         text-transform: uppercase !important;
-        letter-spacing: 0.06em !important;
-        color: var(--text-muted) !important;
+        letter-spacing: 0.05em !important;
+        color: var(--color-text-secondary) !important;
     }
     [data-testid="stMetricValue"] {
-        font-family: var(--font-serif) !important;
-        font-size: 1.9rem !important;
+        font-family: var(--font-sans) !important;
+        font-size: 1.75rem !important;
         font-weight: 700 !important;
-        color: var(--text-primary) !important;
+        color: var(--color-ink-navy) !important;
         letter-spacing: -0.02em !important;
     }
-    [data-testid="stMetricDelta"] svg {
-        fill: currentColor !important;
+
+    /* White Surface Container */
+    .saas-card {
+        background-color: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--border-radius-md);
+        padding: 1.25rem 1.35rem;
+        margin-bottom: 1rem;
+        box-shadow: var(--shadow-card);
+    }
+    .saas-card-elevated {
+        background-color: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--border-radius-lg);
+        padding: 1.5rem;
+        margin-bottom: 1.25rem;
+        box-shadow: var(--shadow-elevated);
     }
 
-    /* Buttons: Primary & Secondary */
-    button[kind="primary"], .stButton > button[kind="primary"], [data-testid="baseButton-primary"] {
-        background-color: var(--accent-primary) !important;
-        color: #FFFFFF !important;
-        border: 1px solid var(--accent-primary) !important;
-        border-radius: 4px !important;
+    /* Interactive Buttons */
+    .stButton > button,
+    button[kind="primary"],
+    button[kind="secondary"],
+    [data-testid="baseButton-primary"],
+    [data-testid="baseButton-secondary"],
+    .stDownloadButton > button {
+        border-radius: 8px !important;
         font-family: var(--font-sans) !important;
         font-weight: 500 !important;
-        font-size: 0.875rem !important;
-        letter-spacing: 0.01em !important;
-        padding: 0.45rem 1rem !important;
-        box-shadow: none !important;
+        font-size: 0.88rem !important;
+        padding: 0.45rem 0.75rem !important;
         transition: all 0.15s ease-in-out !important;
-    }
-    button[kind="primary"]:hover, .stButton > button[kind="primary"]:hover, [data-testid="baseButton-primary"]:hover {
-        background-color: #1E3A8A !important;
-        border-color: #1E3A8A !important;
-        color: #FFFFFF !important;
+        white-space: normal !important;
+        word-break: normal !important;
+        line-height: 1.35 !important;
+        height: auto !important;
+        min-height: 42px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
     }
 
-    button[kind="secondary"], .stButton > button[kind="secondary"], [data-testid="baseButton-secondary"],
-    .stButton > button {
-        background-color: var(--bg-primary) !important;
-        color: var(--text-primary) !important;
-        border: 1px solid var(--border-color) !important;
-        border-radius: 4px !important;
+    /* Prevent truncation and enforce crisp typography on all button labels */
+    .stButton > button *,
+    .stButton > button [data-testid="stMarkdownContainer"] p,
+    .stDownloadButton > button *,
+    .stDownloadButton > button [data-testid="stMarkdownContainer"] p,
+    [data-testid="baseButton-primary"] *,
+    [data-testid="baseButton-primary"] [data-testid="stMarkdownContainer"] p,
+    [data-testid="baseButton-secondary"] *,
+    [data-testid="baseButton-secondary"] [data-testid="stMarkdownContainer"] p {
+        white-space: normal !important;
+        word-break: normal !important;
+        text-overflow: unset !important;
+        overflow: visible !important;
+        line-height: 1.35 !important;
         font-family: var(--font-sans) !important;
-        font-weight: 500 !important;
-        font-size: 0.875rem !important;
-        padding: 0.45rem 1rem !important;
-        box-shadow: none !important;
-        transition: all 0.15s ease-in-out !important;
+        margin: 0 !important;
     }
-    button[kind="secondary"]:hover, .stButton > button[kind="secondary"]:hover, [data-testid="baseButton-secondary"]:hover,
-    .stButton > button:hover {
-        background-color: var(--bg-secondary) !important;
-        border-color: var(--text-primary) !important;
-        color: var(--text-primary) !important;
+
+    /* Primary Buttons (Deep Ink Navy background with crisp, guaranteed WHITE text) */
+    button[kind="primary"],
+    .stButton > button[kind="primary"],
+    [data-testid="baseButton-primary"] {
+        background-color: var(--color-ink-navy) !important;
+        color: #FFFFFF !important;
+        border: 1px solid var(--color-ink-navy) !important;
+        box-shadow: 0 1px 2px rgba(23, 43, 58, 0.12) !important;
+    }
+    button[kind="primary"] *,
+    button[kind="primary"] p,
+    button[kind="primary"] span,
+    button[kind="primary"] div,
+    .stButton > button[kind="primary"] *,
+    .stButton > button[kind="primary"] p,
+    .stButton > button[kind="primary"] span,
+    .stButton > button[kind="primary"] div,
+    [data-testid="baseButton-primary"] *,
+    [data-testid="baseButton-primary"] p,
+    [data-testid="baseButton-primary"] span,
+    [data-testid="baseButton-primary"] div {
+        color: #FFFFFF !important;
+        fill: #FFFFFF !important;
+    }
+    button[kind="primary"]:hover,
+    .stButton > button[kind="primary"]:hover,
+    [data-testid="baseButton-primary"]:hover {
+        background-color: #27435B !important;
+        border-color: #27435B !important;
+        color: #FFFFFF !important;
+    }
+    button[kind="primary"]:hover *,
+    button[kind="primary"]:hover p,
+    button[kind="primary"]:hover span,
+    .stButton > button[kind="primary"]:hover *,
+    .stButton > button[kind="primary"]:hover p,
+    .stButton > button[kind="primary"]:hover span,
+    [data-testid="baseButton-primary"]:hover *,
+    [data-testid="baseButton-primary"]:hover p,
+    [data-testid="baseButton-primary"]:hover span {
+        color: #FFFFFF !important;
+        fill: #FFFFFF !important;
+    }
+
+    /* Secondary Buttons (Clean white surface with dark text) */
+    button[kind="secondary"],
+    .stButton > button[kind="secondary"],
+    .stButton > button:not([kind="primary"]),
+    [data-testid="baseButton-secondary"] {
+        background-color: var(--color-surface) !important;
+        color: var(--color-text-primary) !important;
+        border: 1px solid var(--color-border) !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+    }
+    button[kind="secondary"] *,
+    button[kind="secondary"] p,
+    button[kind="secondary"] span,
+    .stButton > button[kind="secondary"] *,
+    .stButton > button[kind="secondary"] p,
+    .stButton > button[kind="secondary"] span,
+    .stButton > button:not([kind="primary"]) *,
+    .stButton > button:not([kind="primary"]) p,
+    .stButton > button:not([kind="primary"]) span,
+    [data-testid="baseButton-secondary"] *,
+    [data-testid="baseButton-secondary"] p,
+    [data-testid="baseButton-secondary"] span {
+        color: var(--color-text-primary) !important;
+        fill: var(--color-text-primary) !important;
+    }
+    button[kind="secondary"]:hover,
+    .stButton > button[kind="secondary"]:hover,
+    .stButton > button:not([kind="primary"]):hover,
+    [data-testid="baseButton-secondary"]:hover {
+        background-color: #F8F9FA !important;
+        border-color: var(--color-ink-navy) !important;
+        color: var(--color-ink-navy) !important;
+    }
+    button[kind="secondary"]:hover *,
+    button[kind="secondary"]:hover p,
+    button[kind="secondary"]:hover span,
+    .stButton > button[kind="secondary"]:hover *,
+    .stButton > button[kind="secondary"]:hover p,
+    .stButton > button[kind="secondary"]:hover span,
+    .stButton > button:not([kind="primary"]):hover *,
+    .stButton > button:not([kind="primary"]):hover p,
+    .stButton > button:not([kind="primary"]):hover span,
+    [data-testid="baseButton-secondary"]:hover *,
+    [data-testid="baseButton-secondary"]:hover p,
+    [data-testid="baseButton-secondary"]:hover span {
+        color: var(--color-ink-navy) !important;
+        fill: var(--color-ink-navy) !important;
     }
 
     /* Download Buttons */
     .stDownloadButton > button {
-        background-color: var(--bg-primary) !important;
-        color: var(--accent-primary) !important;
-        border: 1px solid var(--border-color) !important;
-        border-radius: 4px !important;
+        background-color: var(--color-surface) !important;
+        color: var(--color-ink-navy) !important;
+        border: 1px solid var(--color-border) !important;
+        border-radius: 8px !important;
         font-weight: 500 !important;
+        font-size: 0.88rem !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+    }
+    .stDownloadButton > button *,
+    .stDownloadButton > button p,
+    .stDownloadButton > button span {
+        color: var(--color-ink-navy) !important;
+        fill: var(--color-ink-navy) !important;
     }
     .stDownloadButton > button:hover {
-        background-color: var(--bg-secondary) !important;
-        border-color: var(--accent-primary) !important;
+        background-color: #F8F9FA !important;
+        border-color: var(--color-ink-navy) !important;
+        color: var(--color-ink-navy) !important;
+    }
+    .stDownloadButton > button:hover *,
+    .stDownloadButton > button:hover p,
+    .stDownloadButton > button:hover span {
+        color: var(--color-ink-navy) !important;
+        fill: var(--color-ink-navy) !important;
     }
 
-    /* Links */
-    a {
-        color: var(--accent-primary) !important;
-        text-decoration: none !important;
-        transition: all 0.15s ease !important;
-    }
-    a:hover {
-        color: #1E3A8A !important;
-        text-decoration: underline !important;
-    }
-
-    /* Forms, Inputs & Selectboxes */
+    /* Form Inputs */
     .stTextInput input, .stTextArea textarea, [data-baseweb="select"] {
-        background-color: var(--surface-white) !important;
-        border: 1px solid var(--border-color) !important;
-        border-radius: 4px !important;
-        color: var(--text-primary) !important;
+        background-color: var(--color-surface) !important;
+        border: 1px solid var(--color-border) !important;
+        border-radius: 8px !important;
+        color: var(--color-text-primary) !important;
         font-family: var(--font-sans) !important;
         font-size: 0.9rem !important;
     }
     .stTextInput input:focus, .stTextArea textarea:focus, [data-baseweb="select"]:focus-within {
-        border-color: var(--accent-primary) !important;
-        box-shadow: 0 0 0 1px var(--accent-primary) !important;
-    }
-    [data-baseweb="menu"] {
-        background-color: var(--surface-white) !important;
-        border: 1px solid var(--border-color) !important;
+        border-color: var(--color-ink-navy) !important;
+        box-shadow: 0 0 0 1px var(--color-ink-navy) !important;
     }
 
-    /* Tabs Styling */
+    /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
-        border-bottom: 1px solid var(--border-color) !important;
+        border-bottom: 1px solid var(--color-border) !important;
         background-color: transparent !important;
         gap: 1.5rem !important;
     }
     .stTabs [data-baseweb="tab"] {
-        color: var(--text-muted) !important;
+        color: var(--color-text-secondary) !important;
         font-family: var(--font-sans) !important;
         font-weight: 500 !important;
         font-size: 0.9rem !important;
-        padding: 0.5rem 0.25rem !important;
+        padding: 0.6rem 0.25rem !important;
         border-bottom: 2px solid transparent !important;
         background-color: transparent !important;
     }
     .stTabs [aria-selected="true"] {
-        color: var(--accent-primary) !important;
+        color: var(--color-ink-navy) !important;
         font-weight: 600 !important;
-        border-bottom: 2px solid var(--accent-primary) !important;
+        border-bottom: 2px solid var(--color-ink-navy) !important;
     }
 
     /* Expanders */
     [data-testid="stExpander"] {
-        background-color: var(--bg-primary) !important;
-        border: 1px solid var(--border-color) !important;
-        border-radius: 4px !important;
-        margin-bottom: 1rem !important;
-    }
-    [data-testid="stExpander"] details {
-        border: none !important;
-    }
-    [data-testid="stExpander"] summary {
-        font-family: var(--font-sans) !important;
-        font-weight: 600 !important;
-        color: var(--text-primary) !important;
+        background-color: var(--color-surface) !important;
+        border: 1px solid var(--color-border) !important;
+        border-radius: var(--border-radius-md) !important;
+        margin-bottom: 0.85rem !important;
+        box-shadow: var(--shadow-card) !important;
     }
 
-    /* Dataframe / Table Styling */
+    /* Dataframe / Table */
     [data-testid="stDataFrame"] {
-        border: 1px solid var(--border-color) !important;
-        border-radius: 4px !important;
-        background-color: var(--bg-primary) !important;
+        border: 1px solid var(--color-border) !important;
+        border-radius: var(--border-radius-md) !important;
+        background-color: var(--color-surface) !important;
+        box-shadow: var(--shadow-card) !important;
     }
 
-    /* Muted Status Badges */
-    .badge-editorial {
-        display: inline-block;
-        padding: 2px 7px;
-        border-radius: 3px;
-        font-size: 0.75rem;
+    /* SaaS Badges */
+    .saas-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 3px 8px;
+        border-radius: var(--border-radius-sm);
+        font-size: 0.72rem;
         font-weight: 600;
-        font-family: var(--font-sans);
-        letter-spacing: 0.03em;
+        letter-spacing: 0.04em;
         text-transform: uppercase;
+        font-family: var(--font-sans);
     }
-    .badge-positive {
-        background-color: #F0FDF4;
-        color: #15803D;
-        border: 1px solid #BBF7D0;
+    .saas-badge-positive {
+        background-color: var(--color-intelligence-green-bg);
+        color: var(--color-intelligence-green);
+        border: 1px solid var(--color-intelligence-green-border);
     }
-    .badge-negative {
-        background-color: #FEF2F2;
-        color: #B91C1C;
-        border: 1px solid #FECACA;
+    .saas-badge-negative {
+        background-color: var(--color-soft-coral-bg);
+        color: var(--color-soft-coral-dark);
+        border: 1px solid var(--color-soft-coral-border);
     }
-    .badge-neutral {
-        background-color: var(--bg-secondary);
-        color: var(--text-primary);
-        border: 1px solid var(--border-color);
+    .saas-badge-neutral {
+        background-color: var(--color-muted-amber-bg);
+        color: var(--color-muted-amber-dark);
+        border: 1px solid var(--color-muted-amber-border);
     }
-    .badge-accent {
-        background-color: #EFF6FF;
-        color: var(--accent-primary);
-        border: 1px solid #BFDBFE;
+    .saas-badge-unclassified {
+        background-color: #F1F3F5;
+        color: var(--color-text-secondary);
+        border: 1px solid var(--color-border);
+    }
+    .saas-badge-navy {
+        background-color: #EBF0F5;
+        color: var(--color-ink-navy);
+        border: 1px solid #D1DDE7;
     }
 
-    /* Alerts / Feedback Overrides */
+    /* Alerts */
     .stAlert {
-        border-radius: 4px !important;
+        border-radius: var(--border-radius-md) !important;
         border-width: 1px !important;
         font-size: 0.9rem !important;
     }
     div[data-testid="stAlert"]:has([data-testid="stNotificationContentSuccess"]) {
-        background-color: #F0FDF4 !important;
-        border-color: #BBF7D0 !important;
-        color: #14532D !important;
+        background-color: var(--color-intelligence-green-bg) !important;
+        border-color: var(--color-intelligence-green-border) !important;
+        color: var(--color-intelligence-green) !important;
     }
     div[data-testid="stAlert"]:has([data-testid="stNotificationContentError"]) {
-        background-color: #FEF2F2 !important;
-        border-color: #FECACA !important;
-        color: #7F1D1D !important;
+        background-color: var(--color-soft-coral-bg) !important;
+        border-color: var(--color-soft-coral-border) !important;
+        color: var(--color-soft-coral-dark) !important;
     }
     div[data-testid="stAlert"]:has([data-testid="stNotificationContentInfo"]) {
-        background-color: #F4EFE6 !important;
-        border-color: var(--border-color) !important;
-        color: var(--text-primary) !important;
+        background-color: #FAF9F5 !important;
+        border-color: var(--color-border) !important;
+        color: var(--color-text-primary) !important;
     }
     div[data-testid="stAlert"]:has([data-testid="stNotificationContentWarning"]) {
-        background-color: #FFFBEB !important;
-        border-color: #FDE68A !important;
-        color: #78350F !important;
+        background-color: var(--color-muted-amber-bg) !important;
+        border-color: var(--color-muted-amber-border) !important;
+        color: var(--color-muted-amber-dark) !important;
     }
 
-    /* Code & Pre */
+    /* Analytical Disclaimer Banner */
+    .saas-callout {
+        background-color: #FAF9F5;
+        border-left: 3px solid var(--color-ink-navy);
+        border-top: 1px solid var(--color-border);
+        border-right: 1px solid var(--color-border);
+        border-bottom: 1px solid var(--color-border);
+        border-radius: var(--border-radius-sm);
+        padding: 0.85rem 1rem;
+        margin: 1rem 0;
+        font-size: 0.85rem;
+        color: var(--color-text-secondary);
+        line-height: 1.55;
+    }
+    .saas-callout strong {
+        color: var(--color-ink-navy);
+    }
+
+    /* Code Blocks */
     code, pre {
-        background-color: var(--bg-secondary) !important;
-        color: var(--text-primary) !important;
-        border: 1px solid var(--border-color) !important;
-        border-radius: 3px !important;
-        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace !important;
+        background-color: #FAF9F5 !important;
+        color: var(--color-text-primary) !important;
+        border: 1px solid var(--color-border) !important;
+        border-radius: 6px !important;
+        font-family: var(--font-mono) !important;
     }
 
-    /* Progress bar */
-    .stProgress > div > div > div > div {
-        background-color: var(--accent-primary) !important;
+    /* Section Divider */
+    .saas-divider {
+        border: none;
+        border-top: 1px solid var(--color-border);
+        margin: 1.25rem 0;
     }
 </style>
 """
 
 
 def apply_editorial_theme():
-    """Injects the global editorial stylesheet into the Streamlit session."""
-    st.markdown(EDITORIAL_CSS, unsafe_allow_html=True)
+    """Injects the global SaaS design system stylesheet into the Streamlit session."""
+    st.markdown(SAAS_CSS, unsafe_allow_html=True)
+
+
+apply_saas_theme = apply_editorial_theme  # Alias for clear SaaS semantics
+
+
+def render_app_header(
+    title: str,
+    subtitle: str,
+    kicker: str = "FINANCIAL EMAIL INTELLIGENCE",
+    action_label: str = None
+):
+    """
+    Renders a clean, modern SaaS header with kicker, title, and clear subtitle.
+    """
+    header_html = f"""
+    <div class="saas-header">
+        <div class="saas-kicker">
+            <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background-color:#18866B;"></span>
+            {kicker}
+        </div>
+        <div class="saas-title">{title}</div>
+        <div class="saas-subtitle">{subtitle}</div>
+    </div>
+    """
+    st.markdown(header_html, unsafe_allow_html=True)
 
 
 def render_editorial_masthead(
     title: str = "INVOICE DIGEST",
-    subtitle: str = "Financial Sentiment Intelligence & Daily Risk Assessment",
-    kicker: str = "FINANCIAL COMMUNICATIONS CHRONICLE"
+    subtitle: str = "Financial Email Sentiment Intelligence & Daily Risk Reporting",
+    kicker: str = "FINANCIAL EMAIL INTELLIGENCE"
 ):
-    """
-    Renders a high-end newspaper masthead with date line, volume,
-    double-rule dividers, serif title, and editorial subtitle.
-    """
-    current_date = datetime.now().strftime("%A, %B %d, %Y")
-    masthead_html = f"""
-    <div class="editorial-masthead">
-        <div class="editorial-meta-bar">
-            <span>{kicker}</span>
-            <span>{current_date}</span>
-            <span>VOL. IV • NO. 104</span>
-        </div>
-        <div class="editorial-title">{title}</div>
-        <div class="editorial-subtitle">{subtitle}</div>
-    </div>
-    """
-    st.markdown(masthead_html, unsafe_allow_html=True)
+    """Backward-compatible header renderer delegating to the SaaS header."""
+    render_app_header(title=title, subtitle=subtitle, kicker=kicker)
 
 
-def render_editorial_sidebar():
-    """Renders the newspaper-style editorial sidebar navigation & masthead."""
+def render_saas_sidebar(active_page: str = "overview"):
+    """
+    Renders the polished SaaS sidebar with brand mark, product descriptor,
+    primary navigation links, real-time system status card, and version footer.
+    """
+    # Tasteful geometric SVG Brandmark combining letterform/document & analytics chevron
+    brand_svg = """
+    <svg width="26" height="26" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="28" height="28" rx="7" fill="#172B3A"/>
+        <path d="M7 9H21" stroke="#F6F5F0" stroke-width="2" stroke-linecap="round"/>
+        <path d="M7 14H16" stroke="#F6F5F0" stroke-width="2" stroke-linecap="round"/>
+        <path d="M7 19H13" stroke="#A3D9C9" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="19" cy="18" r="3" fill="#18866B"/>
+    </svg>
+    """
+
     st.sidebar.markdown(f"""
-    <div style="border-bottom: 1px solid #E5E1D8; padding-bottom: 0.75rem; margin-bottom: 1rem;">
-        <div style="font-family: 'Inter', sans-serif; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; color: #66635E; text-transform: uppercase;">
-            EDITORIAL DESK
-        </div>
-        <div style="font-family: 'Playfair Display', Georgia, serif; font-size: 1.4rem; font-weight: 700; color: #1A1A1A; margin-top: 2px;">
-            Invoice Digest
-        </div>
-        <div style="font-family: 'Inter', sans-serif; font-size: 0.78rem; color: #66635E; margin-top: 2px;">
-            Financial Sentiment Intelligence
+    <div style="display: flex; align-items: center; gap: 0.65rem; padding-bottom: 0.85rem; margin-bottom: 0.5rem; border-bottom: 1px solid #E4E7E5;">
+        <div>{brand_svg}</div>
+        <div>
+            <div style="font-size: 1.15rem; font-weight: 700; color: #172B3A; letter-spacing: -0.02em; line-height: 1.1;">
+                Invoice Digest
+            </div>
+            <div style="font-size: 0.72rem; font-weight: 500; color: #74808B; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px;">
+                Financial Email Intelligence
+            </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
+    # Primary Navigation (Clean Streamlit page_links)
     st.sidebar.markdown("""
-    **NAVIGATION DESK**
-    - **1. Dashboard** — Executive Sentiment Overview
-    - **2. Email Analysis** — Deep-Dive & Label Audit
-    - **3. Model Lab** — FinBERT vs. BiLSTM Benchmark
-    - **4. Daily Digest** — Daily Dispatch & Risk Register
-    """)
+    <div style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #74808B; margin: 0.6rem 0 0.35rem 0.2rem;">
+        Workspaces
+    </div>
+    """, unsafe_allow_html=True)
 
+    try:
+        st.sidebar.page_link("app.py", label="Overview Hub", icon="🏢")
+        st.sidebar.page_link("pages/1_Dashboard.py", label="Executive Dashboard", icon="📊")
+        st.sidebar.page_link("pages/2_Email_Analysis.py", label="Email Analysis & Ledger", icon="📥")
+        st.sidebar.page_link("pages/3_Model_Lab.py", label="Model Evaluation Lab", icon="🔬")
+        st.sidebar.page_link("pages/4_Daily_Digest.py", label="Daily Intelligence Briefing", icon="📑")
+    except Exception:
+        # Fallback if running outside multi-page router
+        st.sidebar.markdown("""
+        - [Overview Hub](/)
+        - [Executive Dashboard](/1_Dashboard)
+        - [Email Analysis](/2_Email_Analysis)
+        - [Model Lab](/3_Model_Lab)
+        - [Daily Digest](/4_Daily_Digest)
+        """)
+
+    # Real-time System Status Card
+    kpis = get_dashboard_kpis()
+    total_emails = kpis.get("total_emails", 0)
+
+    st.sidebar.markdown(f"""
+    <div style="margin-top: 1.75rem; background-color: #FFFFFF; border: 1px solid #E4E7E5; border-radius: 8px; padding: 0.75rem 0.85rem; box-shadow: 0 1px 3px rgba(23,43,58,0.03);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+            <span style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #74808B;">System Engine</span>
+            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.72rem; color: #18866B; font-weight: 600;">
+                <span style="width: 6px; height: 6px; border-radius: 50%; background-color: #18866B;"></span> Ready
+            </span>
+        </div>
+        <div style="font-size: 0.78rem; color: #202B35; line-height: 1.45;">
+            <div>• Database: <strong>SQLite (WAL)</strong></div>
+            <div>• Primary: <strong>FinBERT Transformer</strong></div>
+            <div>• Baseline: <strong>BiLSTM (Supervised)</strong></div>
+            <div>• Ingested: <strong>{total_emails} communications</strong></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Sidebar Footer
     st.sidebar.markdown("""
-    <div style="border-top: 1px solid #E5E1D8; padding-top: 0.75rem; margin-top: 1.5rem; font-size: 0.75rem; color: #66635E;">
-        <strong>SPECIFICATION:</strong><br>
-        60% Cream (<code>#FDFBF7</code>)<br>
-        30% Ink Black (<code>#1A1A1A</code>)<br>
-        10% Royal Blue / Teal
+    <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #E4E7E5; font-size: 0.72rem; color: #74808B; text-align: center;">
+        Invoice Digest v1.2.0 • MLIS Enterprise Edition
     </div>
     """, unsafe_allow_html=True)
 
 
-def apply_plotly_editorial_theme(fig):
+render_editorial_sidebar = render_saas_sidebar  # Backward compatible alias
+
+
+def apply_plotly_saas_theme(fig):
     """
-    Applies the newspaper/editorial color palette and clean layout to any Plotly figure:
-    - Cream background (#FDFBF7)
-    - Ink black typography (#1A1A1A)
-    - Border lines (#E5E1D8)
-    - Primary Accent (#1E40AF), Secondary (#0F766E), Muted (#66635E)
+    Applies the modern SaaS color palette and clean layout to any Plotly figure:
+    - Background: Transparent or clean surface
+    - Typography: 'Inter', sans-serif
+    - Grid lines: #E4E7E5
+    - Palette: Intelligence Green (#18866B), Muted Amber (#DDA348), Soft Coral (#D96C63), Navy (#172B3A)
     """
     fig.update_layout(
-        paper_bgcolor="#FDFBF7",
-        plot_bgcolor="#FDFBF7",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
         font=dict(
-            family="'Inter', -apple-system, sans-serif",
+            family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             size=12,
-            color="#1A1A1A"
+            color="#202B35"
         ),
         title_font=dict(
-            family="'Playfair Display', Georgia, serif",
-            size=15,
-            color="#1A1A1A"
+            family="'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            size=14,
+            color="#172B3A"
         ),
         margin=dict(l=20, r=20, t=35, b=25),
         legend=dict(
-            font=dict(color="#1A1A1A", size=11),
-            bgcolor="rgba(253, 251, 247, 0.8)",
-            bordercolor="#E5E1D8",
+            font=dict(color="#202B35", size=11),
+            bgcolor="rgba(255, 255, 255, 0.9)",
+            bordercolor="#E4E7E5",
             borderwidth=1
         ),
         xaxis=dict(
             showgrid=True,
-            gridcolor="#E5E1D8",
+            gridcolor="#E4E7E5",
             gridwidth=1,
-            linecolor="#E5E1D8",
+            linecolor="#E4E7E5",
             linewidth=1,
-            tickfont=dict(color="#66635E", size=10),
-            title_font=dict(color="#1A1A1A", size=11)
+            tickfont=dict(color="#74808B", size=10),
+            title_font=dict(color="#202B35", size=11)
         ),
         yaxis=dict(
             showgrid=True,
-            gridcolor="#E5E1D8",
+            gridcolor="#E4E7E5",
             gridwidth=1,
-            linecolor="#E5E1D8",
+            linecolor="#E4E7E5",
             linewidth=1,
-            tickfont=dict(color="#66635E", size=10),
-            title_font=dict(color="#1A1A1A", size=11)
+            tickfont=dict(color="#74808B", size=10),
+            title_font=dict(color="#202B35", size=11)
         )
     )
     return fig
+
+
+apply_plotly_editorial_theme = apply_plotly_saas_theme  # Backward compatible alias
+
+
+def render_sentiment_badge(sentiment: str, confidence: float = None) -> str:
+    """Returns HTML for a standardized, accessible sentiment badge."""
+    s = str(sentiment).strip().lower()
+    conf_str = f" • {confidence:.1%}" if confidence is not None else ""
+    
+    if s == "positive":
+        return f'<span class="saas-badge saas-badge-positive">✓ Positive{conf_str}</span>'
+    elif s == "negative":
+        return f'<span class="saas-badge saas-badge-negative">! Negative{conf_str}</span>'
+    elif s == "neutral":
+        return f'<span class="saas-badge saas-badge-neutral">○ Neutral{conf_str}</span>'
+    else:
+        return f'<span class="saas-badge saas-badge-unclassified">Pending Analysis</span>'
+
+
+def render_disclaimer_callout():
+    """Renders the required domain distinction between sentiment polarity and financial urgency."""
+    st.markdown("""
+    <div class="saas-callout">
+        <strong>Domain Analysis Note:</strong> Sentiment classification evaluates contractual tone and counterparty 
+        affect (e.g., courteous remittances vs. adversarial dispute notices). It serves as an analytical indicator, 
+        not an independent determination of accounting priority or commercial liability.
+    </div>
+    """, unsafe_allow_html=True)

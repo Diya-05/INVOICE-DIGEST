@@ -1,8 +1,6 @@
 """
-Invoice Digest — Screen D: Daily Digest
-Automated Daily Financial Report Generation, High-Risk Negative Communication Filtering,
-and CSV / Markdown Snapshot Exports.
-Redesigned with a Minimal, Premium Editorial & Newspaper-Inspired Theme.
+Invoice Digest — Screen D: Daily Intelligence Briefing
+Daily Operational Reporting, Negative Correspondence Flagging, and Multi-Format Exports
 """
 
 from datetime import datetime, date
@@ -11,31 +9,32 @@ import streamlit as st
 from src.database import DEFAULT_DB_PATH, get_db_connection, init_database
 from src.report_generator import export_digest_to_csv, generate_daily_digest
 from src.ui_theme import (
-    apply_editorial_theme,
-    render_editorial_masthead,
-    render_editorial_sidebar,
+    apply_saas_theme,
+    render_app_header,
+    render_saas_sidebar,
+    render_sentiment_badge,
+    render_disclaimer_callout,
 )
 
 st.set_page_config(
-    page_title="Daily Digest | Invoice Digest",
-    page_icon="📰",
+    page_title="Daily Intelligence Briefing | Invoice Digest",
+    page_icon="📑",
     layout="wide"
 )
 
-# Apply global editorial theme and styling
-apply_editorial_theme()
-render_editorial_sidebar()
-
+# Apply global SaaS design system
+apply_saas_theme()
+render_saas_sidebar(active_page="digest")
 init_database()
 
-# Editorial Masthead
-render_editorial_masthead(
-    title="DAILY FINANCIAL DIGEST",
-    subtitle="Actionable Intelligence Briefing, High-Risk Communication Register & Executive Summary",
-    kicker="MORNING FINANCIAL DISPATCH"
+# Header
+render_app_header(
+    title="Daily Intelligence Briefing",
+    subtitle="Compiled daily executive report aggregating verified dispatches, flagging negative sentiment items for human review, and exporting audit logs.",
+    kicker="OPERATIONAL INTELLIGENCE BRIEFING"
 )
 
-# Date Selection Bar
+# Date Selection & Snapshot Controls
 with get_db_connection() as conn:
     cursor = conn.cursor()
     cursor.execute("SELECT DISTINCT SUBSTR(received_at, 1, 10) as dt FROM emails ORDER BY dt DESC;")
@@ -49,109 +48,107 @@ with col_d1:
     selected_date = st.selectbox(
         "Select Reporting Calendar Date:",
         options=dates if dates else [today_str],
-        index=0
+        index=0,
+        key="select_digest_date"
     )
 with col_d2:
-    st.write("")
-    st.write("")
-    gen_btn = st.button("⚡ Generate & Compile Daily Digest", type="primary", use_container_width=True)
+    st.markdown('<div style="height: 28px;"></div>', unsafe_allow_html=True)
+    save_snapshot_btn = st.button("💾 Compile & Save Report Snapshot", type="primary", use_container_width=True)
 
-# Generate Digest for selected date
-digest = generate_daily_digest(selected_date, save_snapshot=True)
+# Generate or read digest (only save to DB when user clicks button or if first compile)
+digest = generate_daily_digest(selected_date, save_snapshot=save_snapshot_btn)
 
-st.markdown('<hr class="editorial-divider">', unsafe_allow_html=True)
+if save_snapshot_btn:
+    st.success(f"✓ Daily snapshot compiled and recorded to SQLite (Report #{digest.get('report_id')}).")
 
-# KPI Cards for Selected Date
-k1, k2, k3, k4 = st.columns(4)
-k1.metric("Total Communications", digest["total_emails"])
-k2.metric("Positive Confirmations", digest["positive_count"], delta="Settled / Credits")
-k3.metric("Neutral Operations", digest["neutral_count"], delta="Standard Bills / POs")
-k4.metric(
-    "Negative High-Risk",
-    digest["negative_count"],
-    delta="Action Required" if digest["negative_count"] > 0 else "All Clear",
-    delta_color="inverse"
-)
+# Briefing Metadata Banner
+total_emails = digest["total_emails"]
+pos_count = digest["positive_count"]
+neu_count = digest["neutral_count"]
+neg_count = digest["negative_count"]
+unclass_count = digest.get("unclassified_count", 0)
 
-st.markdown('<hr class="editorial-divider">', unsafe_allow_html=True)
+k1, k2, k3, k4, k5 = st.columns(5)
+k1.metric("Indexed for Date", total_emails)
+k2.metric("Positive Sentiment", pos_count, delta="Confirmations / Credits", delta_color="normal")
+k3.metric("Neutral Operations", neu_count, delta="Standard Invoices / POs", delta_color="off")
+k4.metric("Negative Sentiment", neg_count, delta="Review Recommended" if neg_count > 0 else "All Clear", delta_color="inverse")
+k5.metric("Pending Inference", unclass_count, delta="Queued" if unclass_count > 0 else "Complete", delta_color="off")
 
-# Priority Review: Negative Communications
+st.markdown('<div class="saas-divider"></div>', unsafe_allow_html=True)
+
+# Section: Priority Review (Negative Sentiment Items)
 st.markdown("""
-<div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.5rem;">
-    <div style="font-family: 'Playfair Display', Georgia, serif; font-size: 1.35rem; font-weight: 700; color: #1A1A1A;">
-        Priority Register: Adverse Communications Requiring Review
-    </div>
+<div style="font-size: 1.15rem; font-weight: 600; color: #172B3A; margin-bottom: 0.25rem;">
+    Priority Register: Negative Sentiment Correspondence
+</div>
+<div style="font-size: 0.82rem; color: #74808B; margin-bottom: 0.75rem;">
+    Linguistic signals indicative of overdue balances, billing disputes, or service holds requiring human audit:
 </div>
 """, unsafe_allow_html=True)
 
 if digest["negative_emails"]:
     st.markdown("""
-    <div class="editorial-card" style="border-left: 3px solid #B91C1C; background-color: #FEF2F2; margin-bottom: 1rem;">
-        <span style="font-weight: 600; color: #991B1B;">URGENT AUDIT NOTICE:</span>
-        <span style="color: #7F1D1D; font-size: 0.9rem;">
-            The following communications exhibit high negative sentiment polarity indicative of past-due notices, 
-            service cancellation warnings, or billing disputes. Immediate review is advised.
-        </span>
+    <div style="padding: 0.65rem 0.85rem; background-color: #FDF0EF; border-left: 3px solid #D96C63; border-radius: 6px; font-size: 0.85rem; color: #9C3831; margin-bottom: 1rem;">
+        <strong>Review Recommended:</strong> The following communications exhibit negative emotional or contractual polarity. Please verify whether operational or treasury action is necessary.
     </div>
     """, unsafe_allow_html=True)
 
-    neg_display = []
+    neg_rows = []
     for item in digest["negative_emails"]:
-        neg_display.append({
+        neg_rows.append({
             "Subject": item["subject"],
             "Sender": item["sender"],
             "Negative Confidence": f"{item['negative_score']:.1%}",
-            "Correspondence Excerpt": item["body_text"][:160] + "..."
+            "Correspondence Excerpt": item["body_text"][:140] + "..."
         })
-    df_neg = pd.DataFrame(neg_display)
+    df_neg = pd.DataFrame(neg_rows)
     st.dataframe(df_neg, use_container_width=True, hide_index=True)
 else:
     st.markdown("""
-    <div class="editorial-card" style="border-left: 3px solid #15803D; background-color: #F0FDF4;">
-        <span style="font-weight: 600; color: #166534;">STATUS NORMAL:</span>
-        <span style="color: #14532D; font-size: 0.9rem;">
-            No adverse or contentious communications were detected for this date. All inbound dispatches remain within standard operational tolerance.
-        </span>
+    <div style="padding: 0.65rem 0.85rem; background-color: #E8F5F1; border-left: 3px solid #18866B; border-radius: 6px; font-size: 0.85rem; color: #18866B; margin-bottom: 1rem;">
+        ✓ <strong>Status Normal:</strong> No adverse or contentious communications identified for this date.
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown('<hr class="editorial-divider">', unsafe_allow_html=True)
+st.markdown('<div class="saas-divider"></div>', unsafe_allow_html=True)
 
-# Formatted Markdown Report Preview & Export
+# Section: Formatted Report & Export Desk
 c_rep1, c_rep2 = st.columns([3, 2])
 
 with c_rep1:
     st.markdown("""
-    <div style="font-family: 'Playfair Display', Georgia, serif; font-size: 1.35rem; font-weight: 700; color: #1A1A1A; margin-bottom: 0.5rem;">
-        Executive Briefing Document (Formatted Snapshot)
+    <div style="font-size: 1.15rem; font-weight: 600; color: #172B3A; margin-bottom: 0.5rem;">
+        Formatted Intelligence Briefing Document
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown(f"""
-    <div class="editorial-card-elevated" style="font-family: 'Libre Baskerville', Georgia, serif; font-size: 0.95rem; line-height: 1.7; color: #1A1A1A; padding: 2rem; border-top: 3px solid #1A1A1A;">
+    <div class="saas-card" style="font-size: 0.9rem; line-height: 1.65; color: #202B35; padding: 1.5rem; background-color: #FFFFFF; border-left: 3px solid #172B3A;">
 {digest['report_markdown']}
     </div>
     """, unsafe_allow_html=True)
 
 with c_rep2:
     st.markdown("""
-    <div style="font-family: 'Playfair Display', Georgia, serif; font-size: 1.35rem; font-weight: 700; color: #1A1A1A; margin-bottom: 0.5rem;">
-        Dispatch & Export Desk
+    <div style="font-size: 1.15rem; font-weight: 600; color: #172B3A; margin-bottom: 0.5rem;">
+        Dispatch & Export Actions
     </div>
-    <div style="font-size: 0.88rem; color: #66635E; margin-bottom: 1rem;">
-        Export authenticated reports or transmit directly to executive stakeholders:
+    <div style="font-size: 0.82rem; color: #74808B; margin-bottom: 0.85rem;">
+        Export report artifacts or transmit to executive stakeholders:
     </div>
     """, unsafe_allow_html=True)
-    
-    st.markdown('<div class="editorial-card-elevated">', unsafe_allow_html=True)
-    
+
+    st.markdown('<div class="saas-card">', unsafe_allow_html=True)
+
     csv_data = export_digest_to_csv(digest["all_emails"])
     st.download_button(
         label="📥 Download Daily Digest Ledger (CSV)",
         data=csv_data,
         file_name=f"invoice_digest_{selected_date}.csv",
         mime="text/csv",
-        use_container_width=True
+        use_container_width=True,
+        key="btn_dl_csv"
     )
 
     st.markdown('<div style="height: 6px;"></div>', unsafe_allow_html=True)
@@ -161,25 +158,20 @@ with c_rep2:
         data=digest["report_markdown"],
         file_name=f"invoice_digest_{selected_date}.md",
         mime="text/markdown",
-        use_container_width=True
+        use_container_width=True,
+        key="btn_dl_md"
     )
 
-    st.markdown('<hr class="editorial-divider">', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div style="font-family: 'Playfair Display', Georgia, serif; font-size: 1.1rem; font-weight: 700; color: #1A1A1A; margin-bottom: 0.35rem;">
-        SMTP Transmission Terminal
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="saas-divider"></div>', unsafe_allow_html=True)
 
-    with st.expander("Dispatch via Email (SMTP)", expanded=False):
-        dest_email = st.text_input("Recipient Address", placeholder="executive@enterprise.com", key="dest_email")
-        smtp_sender = st.text_input("Sender Address", placeholder="digest-bot@gmail.com", key="smtp_sender")
-        smtp_pass = st.text_input("16-Character App Token", type="password", key="smtp_pass")
+    with st.expander("✉️ Dispatch via SMTP Relay", expanded=False):
+        dest_email = st.text_input("Recipient Address", placeholder="finance-exec@company.com", key="dest_email")
+        smtp_sender = st.text_input("Sender Mailbox", placeholder="invoicedigest-bot@company.com", key="smtp_sender")
+        smtp_pass = st.text_input("SMTP App Token", type="password", key="smtp_pass")
 
-        if st.button("🚀 Transmit Digest to Recipient", type="primary", use_container_width=True):
+        if st.button("🚀 Transmit Briefing via TLS", type="primary", use_container_width=True):
             if not dest_email or not smtp_sender or not smtp_pass:
-                st.error("Please supply recipient address, sender address, and app token.")
+                st.error("Please supply recipient address, sender address, and app password.")
             else:
                 with st.spinner("Dispatching formatted digest over TLS..."):
                     from src.email_service import send_daily_digest_email
@@ -197,10 +189,6 @@ with c_rep2:
                     else:
                         st.error(f"Transmission failed: {msg_out}")
 
-    st.markdown("""
-    <div style="font-size: 0.78rem; color: #66635E; margin-top: 0.5rem;">
-        RECORD STATUS: <strong>VERIFIED / PERSISTED TO SQLITE</strong>
-    </div>
-    """, unsafe_allow_html=True)
-
     st.markdown('</div>', unsafe_allow_html=True)
+
+render_disclaimer_callout()

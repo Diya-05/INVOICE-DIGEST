@@ -1,7 +1,7 @@
 """
 Daily Digest and Report Generation Engine for Invoice Digest
-Aggregates daily predictions, flags negative communications for immediate human review,
-formats markdown/CSV digests, and saves snapshots to SQLite.
+Aggregates daily predictions, flags negative communications for human review,
+formats markdown/CSV digests, and saves/updates snapshots in SQLite without duplicate proliferation.
 """
 
 from datetime import datetime, timezone
@@ -19,8 +19,8 @@ def generate_daily_digest(
 ) -> Dict[str, Any]:
     """
     Aggregates emails and predictions for a specific calendar date (YYYY-MM-DD),
-    identifies urgent negative communications, builds a human-readable digest,
-    and optionally records the snapshot in daily_reports.
+    identifies negative communications for human review, builds a markdown digest,
+    and updates/records the snapshot in daily_reports idempotently.
     """
     with get_db_connection(db_path) as conn:
         cursor = conn.cursor()
@@ -36,7 +36,7 @@ def generate_daily_digest(
                 e.sender,
                 e.received_at,
                 e.body_text,
-                COALESCE(p.sentiment, 'neutral') AS sentiment,
+                COALESCE(p.sentiment, 'unclassified') AS sentiment,
                 COALESCE(p.negative_score, 0.0) AS negative_score,
                 COALESCE(p.positive_score, 0.0) AS positive_score,
                 COALESCE(p.neutral_score, 0.0) AS neutral_score,
@@ -60,28 +60,35 @@ def generate_daily_digest(
     positive_emails = [e for e in email_records if e["sentiment"] == "positive"]
     negative_emails = [e for e in email_records if e["sentiment"] == "negative"]
     neutral_emails = [e for e in email_records if e["sentiment"] == "neutral"]
+    unclassified_emails = [e for e in email_records if e["sentiment"] == "unclassified"]
 
     pos_count = len(positive_emails)
     neg_count = len(negative_emails)
     neu_count = len(neutral_emails)
+    unclass_count = len(unclassified_emails)
 
     # Format Markdown Report
     md_lines = [
-        f"# Invoice Digest — Daily Financial Communication Report",
-        f"**Date:** {report_date}  |  **Generated:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        f"# Invoice Digest — Daily Financial Intelligence Briefing",
+        f"**Reporting Period:** {report_date}  |  **Compiled (UTC):** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}",
         "",
         "## Executive Summary",
-        f"- **Total Communications Analyzed:** {total_emails}",
-        f"- **Negative (Action / Dispute / Risk):** {neg_count} ({(neg_count/total_emails*100):.1f}%" if total_emails else "- **Negative:** 0",
-        f"- **Neutral (Operational / Invoices / POs):** {neu_count} ({(neu_count/total_emails*100):.1f}%" if total_emails else "- **Neutral:** 0",
-        f"- **Positive (Settled / Discounts / Confirmations):** {pos_count} ({(pos_count/total_emails*100):.1f}%" if total_emails else "- **Positive:** 0",
+        f"- **Total Indexed Communications:** {total_emails}",
+        f"- **Negative Sentiment (Review Recommended):** {neg_count} ({(neg_count/total_emails*100):.1f}%" if total_emails else "- **Negative Sentiment:** 0",
+        f"- **Neutral Sentiment (Standard Invoicing/Operations):** {neu_count} ({(neu_count/total_emails*100):.1f}%" if total_emails else "- **Neutral Sentiment:** 0",
+        f"- **Positive Sentiment (Confirmations/Discounts):** {pos_count} ({(pos_count/total_emails*100):.1f}%" if total_emails else "- **Positive Sentiment:** 0",
+    ]
+    if unclass_count > 0:
+        md_lines.append(f"- **Pending Classification:** {unclass_count} ({(unclass_count/total_emails*100):.1f}%)")
+
+    md_lines.extend([
         "",
         "---",
-        "## Priority Review: Negative & High-Risk Communications",
-    ]
+        "## Communications with Negative Polarity (Human Review Recommended)",
+    ])
 
     if not negative_emails:
-        md_lines.append("*No negative communications detected for this date.*")
+        md_lines.append("*No negative sentiment communications identified for this date.*")
     else:
         for idx, item in enumerate(negative_emails, 1):
             md_lines.extend([
@@ -95,10 +102,10 @@ def generate_daily_digest(
 
     md_lines.extend([
         "---",
-        "## Standard Invoicing & Operational Items",
-        f"There are **{neu_count}** neutral transactional messages and **{pos_count}** positive confirmations.",
+        "## Operational & Transactional Summary",
+        f"Contains **{neu_count}** neutral transactional messages and **{pos_count}** positive confirmations.",
         "",
-        "*(Note: Sentiment indicates emotional and contractual tone, not transactional urgency. Human review recommended.)*"
+        "> **Notice:** Sentiment polarity reflects language and counterparty affect, not absolute accounting priority. Please perform human verification before adjusting financial ledgers."
     ])
 
     report_markdown = "\n".join(md_lines)
@@ -107,15 +114,32 @@ def generate_daily_digest(
     if save_snapshot and total_emails > 0:
         with get_db_connection(db_path) as conn:
             cursor = conn.cursor()
+            # Prevent duplicate report snapshots on normal reruns:
             cursor.execute(
-                """
-                INSERT INTO daily_reports (
-                    report_date, total_emails, positive_count, negative_count, neutral_count, report_content, delivery_status
-                ) VALUES (?, ?, ?, ?, ?, ?, 'draft');
-                """,
-                (report_date, total_emails, pos_count, neg_count, neu_count, report_markdown)
+                "SELECT id FROM daily_reports WHERE report_date = ? ORDER BY id DESC LIMIT 1;",
+                (report_date,)
             )
-            report_id = cursor.lastrowid
+            existing = cursor.fetchone()
+            if existing:
+                report_id = existing["id"]
+                cursor.execute(
+                    """
+                    UPDATE daily_reports 
+                    SET total_emails = ?, positive_count = ?, negative_count = ?, neutral_count = ?, report_content = ?
+                    WHERE id = ?;
+                    """,
+                    (total_emails, pos_count, neg_count, neu_count, report_markdown, report_id)
+                )
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO daily_reports (
+                        report_date, total_emails, positive_count, negative_count, neutral_count, report_content, delivery_status
+                    ) VALUES (?, ?, ?, ?, ?, ?, 'draft');
+                    """,
+                    (report_date, total_emails, pos_count, neg_count, neu_count, report_markdown)
+                )
+                report_id = cursor.lastrowid
 
     return {
         "report_id": report_id,
@@ -124,7 +148,10 @@ def generate_daily_digest(
         "positive_count": pos_count,
         "negative_count": neg_count,
         "neutral_count": neu_count,
+        "unclassified_count": unclass_count,
         "negative_emails": negative_emails,
+        "positive_emails": positive_emails,
+        "neutral_emails": neutral_emails,
         "all_emails": email_records,
         "report_markdown": report_markdown
     }

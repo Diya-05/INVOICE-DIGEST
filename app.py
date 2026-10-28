@@ -1,127 +1,157 @@
 """
-Invoice Digest — Streamlit Entry Point
-Financial Email Sentiment Analysis & Daily Reporting
-Redesigned with a Minimal, Premium Editorial & Newspaper-Inspired Theme.
+Invoice Digest — Application Hub & Executive Overview
+Modern B2B SaaS Financial Email Sentiment Intelligence Platform
 """
 
-import os
 import streamlit as st
 from src.database import get_dashboard_kpis, init_database
 from src.ui_theme import (
-    apply_editorial_theme,
-    render_editorial_masthead,
-    render_editorial_sidebar,
+    apply_saas_theme,
+    render_app_header,
+    render_saas_sidebar,
+    apply_plotly_saas_theme,
+    render_disclaimer_callout
 )
+import plotly.graph_objects as go
 
 st.set_page_config(
-    page_title="Invoice Digest — Financial Sentiment Intelligence",
-    page_icon="📰",
+    page_title="Invoice Digest — Financial Email Intelligence",
+    page_icon="💼",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Apply global editorial theme and custom stylesheet
-apply_editorial_theme()
-
-# Ensure database tables exist
+# Apply global SaaS design system
+apply_saas_theme()
 init_database()
+render_saas_sidebar(active_page="overview")
 
-# Sidebar Navigation Summary
-render_editorial_sidebar()
-
-# Masthead
-render_editorial_masthead(
-    title="INVOICE DIGEST",
-    subtitle="Financial Email Sentiment Intelligence, Transformer Benchmarks & Risk Reporting",
-    kicker="EXECUTIVE INTELLIGENCE EDITION"
+# App Header
+render_app_header(
+    title="Financial Email Intelligence Hub",
+    subtitle="Enterprise natural language intelligence platform for classifying incoming financial dispatches, benchmarking domain transformers against recurrent baselines, and automating risk digests.",
+    kicker="EXECUTIVE OVERVIEW"
 )
 
-# Top KPI Overview
+# Real Database KPIs
 kpis = get_dashboard_kpis()
+total = kpis["total_emails"]
+pos = kpis["positive_count"]
+neu = kpis["neutral_count"]
+neg = kpis["negative_count"]
+unclass = kpis["unclassified_count"]
 
-col1, col2, col3, col4 = st.columns(4)
+pos_pct = f"{(pos / total * 100):.1f}%" if total > 0 else "0.0%"
+neu_pct = f"{(neu / total * 100):.1f}%" if total > 0 else "0.0%"
+neg_pct = f"{(neg / total * 100):.1f}%" if total > 0 else "0.0%"
+
+col1, col2, col3, col4, col5 = st.columns(5)
 with col1:
-    st.metric(label="Total Ingested Communications", value=kpis["total_emails"])
+    st.metric(label="Total Ingested", value=total, help="All unique emails recorded in SQLite database")
 with col2:
-    st.metric(label="Positive Confirmations", value=kpis["positive_count"], delta="Settled / Credits")
+    st.metric(label="Positive", value=pos, delta=f"{pos_pct} share", delta_color="normal")
 with col3:
-    st.metric(label="Neutral Operations", value=kpis["neutral_count"], delta="Invoices / POs")
+    st.metric(label="Neutral", value=neu, delta=f"{neu_pct} share", delta_color="off")
 with col4:
-    st.metric(label="Negative Risk Alerts", value=kpis["negative_count"], delta="-Requires Audit", delta_color="inverse")
+    st.metric(label="Negative", value=neg, delta=f"{neg_pct} review", delta_color="inverse")
+with col5:
+    st.metric(label="Pending Inference", value=unclass, delta="Queued" if unclass > 0 else "All Classified", delta_color="off")
 
-st.markdown('<hr class="editorial-divider">', unsafe_allow_html=True)
+st.markdown('<div class="saas-divider"></div>', unsafe_allow_html=True)
 
-# Main Editorial Column & Action Desk
+# Main Section: Analytics & Capabilities Grid
 c_left, c_right = st.columns([3, 2])
 
 with c_left:
     st.markdown("""
-    <div style="font-family: 'Playfair Display', Georgia, serif; font-size: 1.45rem; font-weight: 700; color: #1A1A1A; margin-bottom: 0.5rem;">
-        Executive Memorandum: The Financial Communication Challenge
+    <div style="font-size: 1.1rem; font-weight: 600; color: #172B3A; margin-bottom: 0.25rem;">
+        Sentiment Polarity Distribution
     </div>
-    <div style="font-family: 'Inter', sans-serif; font-size: 0.95rem; line-height: 1.7; color: #1A1A1A;">
-        <strong>Invoice Digest</strong> addresses an acute operational vulnerability in modern accounts payable 
-        and treasury operations: the deluge of unvetted incoming commercial correspondence. By evaluating tone, 
-        contractual urgency, and implicit risk signals, the platform categorizes every incoming financial dispatch 
-        into three distinct polarities:
-        <ul style="margin-top: 0.5rem; padding-left: 1.25rem;">
-            <li><strong>Negative:</strong> Overdue statements, impending service suspensions, billing disputes, and fraud alerts.</li>
-            <li><strong>Neutral:</strong> Standard purchase orders, vendor invoices, W-9 submissions, and routine operational inquiries.</li>
-            <li><strong>Positive:</strong> Confirmed remittances, early payment discounts, account reconciliations, and vendor commendations.</li>
+    <div style="font-size: 0.82rem; color: #74808B; margin-bottom: 0.85rem;">
+        Aggregated sentiment classifications across all currently indexed commercial correspondence
+    </div>
+    """, unsafe_allow_html=True)
+
+    if total > 0:
+        labels = ["Positive (Settled / Credits)", "Neutral (Operations / POs)", "Negative (Disputes / Overdue)"]
+        values = [pos, neu, neg]
+        colors = ["#18866B", "#DDA348", "#D96C63"]
+
+        if unclass > 0:
+            labels.append("Pending Analysis")
+            values.append(unclass)
+            colors.append("#CBD0D4")
+
+        fig = go.Figure(data=[go.Pie(
+            labels=labels,
+            values=values,
+            hole=0.56,
+            marker=dict(colors=colors, line=dict(color="#FFFFFF", width=2)),
+            textinfo='label+percent',
+            hoverinfo='label+value+percent'
+        )])
+        fig.update_layout(
+            margin=dict(t=10, b=10, l=10, r=10),
+            height=280,
+            showlegend=True
+        )
+        apply_plotly_saas_theme(fig)
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("No communications indexed yet. Navigate to Email Analysis or Executive Dashboard to upload a CSV batch.")
+
+    render_disclaimer_callout()
+
+with c_right:
+    st.markdown("""
+    <div style="font-size: 1.1rem; font-weight: 600; color: #172B3A; margin-bottom: 0.25rem;">
+        Platform Capabilities & Desks
+    </div>
+    <div style="font-size: 0.82rem; color: #74808B; margin-bottom: 0.85rem;">
+        Navigate directly to your designated operational workspace:
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div class="saas-card">', unsafe_allow_html=True)
+
+    if st.button("📊 Open Executive Dashboard", use_container_width=True, type="primary"):
+        st.switch_page("pages/1_Dashboard.py")
+
+    st.markdown('<div style="height: 6px;"></div>', unsafe_allow_html=True)
+
+    if st.button("📥 Open Email Analysis & Ledger", use_container_width=True):
+        st.switch_page("pages/2_Email_Analysis.py")
+
+    st.markdown('<div style="height: 6px;"></div>', unsafe_allow_html=True)
+
+    if st.button("🔬 Open Model Evaluation Lab", use_container_width=True):
+        st.switch_page("pages/3_Model_Lab.py")
+
+    st.markdown('<div style="height: 6px;"></div>', unsafe_allow_html=True)
+
+    if st.button("📑 Open Daily Intelligence Briefing", use_container_width=True):
+        st.switch_page("pages/4_Daily_Digest.py")
+
+    st.markdown("""
+    <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #E4E7E5; font-size: 0.8rem; color: #74808B; line-height: 1.5;">
+        <strong style="color: #172B3A;">Enterprise Architecture:</strong>
+        <ul style="margin: 0.35rem 0 0 1.1rem; padding: 0;">
+            <li>Zero cloud leakage: all embeddings and inferencing run locally.</li>
+            <li>SHA-256 deduplication preserves idempotent database integrity.</li>
+            <li>Comparative evaluation benchmarks FinBERT against supervised BiLSTM.</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("""
-    <div class="editorial-card" style="margin-top: 1.25rem; border-left: 3px solid #1E40AF;">
-        <div style="font-family: 'Playfair Display', Georgia, serif; font-size: 1.05rem; font-weight: 700; color: #1A1A1A;">
-            Analytical Interpretation Note
-        </div>
-        <div style="font-family: 'Inter', sans-serif; font-size: 0.88rem; color: #66635E; margin-top: 0.35rem; line-height: 1.6;">
-            Sentiment polarity serves as an analytical proxy for emotional temperature and counterparty urgency, 
-            not pure accounting priority. A measured, neutral invoice may represent significant liability, 
-            while an impassioned dispute demands immediate client-success intervention. Automated models 
-            augment human financial stewards.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with c_right:
-    st.markdown("""
-    <div style="font-family: 'Playfair Display', Georgia, serif; font-size: 1.45rem; font-weight: 700; color: #1A1A1A; margin-bottom: 0.5rem;">
-        Operational Desks
-    </div>
-    <div style="font-size: 0.88rem; color: #66635E; margin-bottom: 1rem;">
-        Select an operational terminal to begin processing financial communications:
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown('<div class="editorial-card-elevated">', unsafe_allow_html=True)
-    
-    if st.button("📊 Open Operational Dashboard", use_container_width=True, type="primary"):
-        st.switch_page("pages/1_Dashboard.py")
-    
-    st.markdown('<div style="height: 8px;"></div>', unsafe_allow_html=True)
-
-    if st.button("🔍 Search & Verify Email Labels", use_container_width=True):
-        st.switch_page("pages/2_Email_Analysis.py")
-
-    st.markdown('<div style="height: 8px;"></div>', unsafe_allow_html=True)
-
-    if st.button("🔬 Explore Model Lab (FinBERT vs BiLSTM)", use_container_width=True):
-        st.switch_page("pages/3_Model_Lab.py")
-
-    st.markdown('<div style="height: 8px;"></div>', unsafe_allow_html=True)
-
-    if st.button("📑 Generate Today's Daily Digest", use_container_width=True):
-        st.switch_page("pages/4_Daily_Digest.py")
-
     st.markdown('</div>', unsafe_allow_html=True)
 
+st.markdown('<div class="saas-divider"></div>', unsafe_allow_html=True)
+
+# System Summary Strip
 st.markdown("""
-<div style="border-top: 1px solid #E5E1D8; margin-top: 2.5rem; padding-top: 1rem; display: flex; justify-content: space-between; font-size: 0.78rem; color: #66635E; font-family: 'Inter', sans-serif;">
-    <span>MLIS ACADEMIC RESEARCH PROJECT</span>
-    <span>BASELINE: FINBERT TRANSFORMER VS. BIDIRECTIONAL LSTM</span>
-    <span>PRINTED IN #FDFBF7 CREAM & INK</span>
+<div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; color: #74808B; padding: 0.5rem 0;">
+    <span>MLIS RESEARCH & ENTERPRISE INTELLIGENCE SYSTEM</span>
+    <span>DUAL-MODEL BENCHMARK: FINBERT vs. BIDIRECTIONAL LSTM</span>
+    <span>PERSISTENCE: SQLITE (WAL)</span>
 </div>
 """, unsafe_allow_html=True)
